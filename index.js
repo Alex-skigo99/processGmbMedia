@@ -18,7 +18,7 @@ exports.handler = async (event) => {
   const messages = event.Records.map(r => JSON.parse(r.body));
 
   await Promise.all(messages.map(async (msg) => {
-    const { organization_id, account_id, gmb_id } = msg;
+    const { organization_id, account_id, gmb_id, posts_media } = msg;
 
     const location = await knex(DatabaseTableConstants.GMB_LOCATION_TABLE)
       .where({ id: gmb_id })
@@ -36,7 +36,10 @@ exports.handler = async (event) => {
         .fetchValidGoogleAccessTokenViaAccountAndOrgId(account_id, organization_id);
 
       // 2. Fetch all media items from GMB location
-      const allMedia = await Utils.getGmbMedia(account_id, gmb_id, token);
+      const allMediaFromGoogle = await Utils.getGmbMedia(account_id, gmb_id, token);
+
+        // 2b. add posts media to the allMedia array
+      const allMedia = await Utils.addPostsMedia(gmb_id, allMediaFromGoogle, posts_media);
 
       // 3. Map into rows matching your gmb_media table
       const rows = allMedia.map(m => ({
@@ -75,6 +78,9 @@ exports.handler = async (event) => {
       const inserted = await knex(DatabaseTableConstants.GMB_MEDIA_TABLE)
         .insert(newRows)
         .returning(['id', 'google_url']);
+
+      //4b. Check and mark posts media
+      await Utils.checkAndMarkPostsMedia(gmb_id, allMedia, posts_media);
 
       // 5. Download and push each to S3
       await Promise.all(
