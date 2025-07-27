@@ -31,7 +31,7 @@ class Utils {
   // If a media item already exists, it updates the post_id
   // If it doesn't exist, it adds a new media item with post_id
   static addPostsMedia = (gmb_id, allMedia, posts_media) => {
-    if (!posts_media) return;
+    if (!posts_media) return allMedia;
 
     posts_media.forEach(post => {
         const media = post.media;
@@ -44,23 +44,9 @@ class Utils {
 
             } else {
                 allMedia.push({
-                    gmb_id:             gmb_id,
-                    name:               media_item.name,
-                    post_id:            post.post_id,
-                    media_format:        media_item.mediaFormat,
-                    category:            media_item.locationAssociation?.category ?? null,
-                    price_list_item_id:  media_item.locationAssociation?.priceListItemId ?? null,
-                    google_url:          media_item.googleUrl,
-                    thumbnail_url:       media_item.thumbnailUrl,
-                    create_time:         media_item.createTime,
-                    // backed_up_time will default to now()
-                    width_px:            media_item.dimensions?.widthPixels ?? null,
-                    height_px:           media_item.dimensions?.heightPixels ?? null,
-                    view_count:          media_item.insights?.viewCount ?? null,
-                    attribution_json:    media_item.attribution || null,
-                    description:         media_item.description || null,
-                    source_url:          media_item.sourceUrl || null,
-                    data_ref_resource:   media_item.dataRef?.resourceName || null
+                    gmb_id: gmb_id,
+                    post_id: post.post_id,
+                    ...media_item
                 });
                 console.log(`✅ Added new media to AllMedia: ${media_item.name}`);
             }
@@ -105,8 +91,6 @@ class Utils {
     } else {
       console.log(`✅ No matching media found to update for GMB ID: ${gmb_id}`);
     }
-
-    return updateData;
   };
 
 }
