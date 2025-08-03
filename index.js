@@ -29,21 +29,25 @@ exports.handler = async (event) => {
       console.log(`⚠️ Skipping ${gmb_id} - Not VERIFIED`);
       return { statusCode: 200, body: '"Skipping GMB, not verified"' };
     }
+    const allMediaFromGoogle = [];
 
     try {
-      // 1. Get a valid Google access token
-      const token = await FetchGoogleTokensUtils
-        .fetchValidGoogleAccessTokenViaAccountAndOrgId(account_id, organization_id);
+      if (account_id !== undefined || organization_id !== undefined) {
+        // 1. Get a valid Google access token
+        const token = await FetchGoogleTokensUtils
+          .fetchValidGoogleAccessTokenViaAccountAndOrgId(account_id, organization_id);
 
-      // 2. Fetch all media items from GMB location
-      const allMediaFromGoogle = await Utils.getGmbMedia(account_id, gmb_id, token);
+        // 2. Fetch all media items from GMB location
+        allMediaFromGoogle = await Utils.getGmbMedia(account_id, gmb_id, token);
+      }
 
         // 2b. add posts media to the allMedia array
-      const allMedia = await Utils.addPostsMedia(gmb_id, allMediaFromGoogle, posts_media);
+      const allMedia = await Utils.addPostsMedia(allMediaFromGoogle, posts_media);
 
       // 3. Map into rows matching your gmb_media table
       const rows = allMedia.map(m => ({
         gmb_id:              gmb_id,
+        post_id:             m.post_id || null,
         name:                m.name,
         media_format:        m.mediaFormat,
         category:            m.locationAssociation?.category ?? null,
@@ -78,9 +82,6 @@ exports.handler = async (event) => {
       const inserted = await knex(DatabaseTableConstants.GMB_MEDIA_TABLE)
         .insert(newRows)
         .returning(['id', 'google_url']);
-
-      //4b. Check and mark posts media
-      await Utils.checkAndMarkPostsMedia(gmb_id, allMedia, posts_media);
 
       // 5. Download and push each to S3
       await Promise.all(
